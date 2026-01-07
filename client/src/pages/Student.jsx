@@ -1,38 +1,32 @@
 import { useEffect, useState } from "react";
 import useSocket from "../hooks/useSocket";
-import usePollTimer from "../hooks/usePollTimer";
 
 export default function Student() {
   const socket = useSocket();
 
-  const [currentPoll, setCurrentPoll] = useState(null);
-  const [liveStats, setLiveStats] = useState({});
-  const [submitted, setSubmitted] = useState(false);
-
-  let studentId = sessionStorage.getItem("studentId");
-  let storedName = sessionStorage.getItem("studentName");
-
-  if (!studentId) {
-    studentId = crypto.randomUUID();
-    sessionStorage.setItem("studentId", studentId);
-  }
-
-  const [nameInput, setNameInput] = useState(storedName || "");
+  const [poll, setPoll] = useState(null);
+  const [results, setResults] = useState({});
+  const [voted, setVoted] = useState(false);
 
   useEffect(() => {
     if (!socket) return;
 
-    socket.on("poll_state", poll => {
-      setCurrentPoll(poll);
-      setSubmitted(false);
+    console.log("Student socket connected:", socket.id);
+
+    socket.on("poll_state", (p) => {
+      console.log("Student received poll");
+      setPoll(p);
+      setVoted(false);
     });
 
-    socket.on("poll_results", results => {
-      setLiveStats(results || {});
+    socket.on("poll_results", (r) => {
+      setResults(r);
     });
 
     socket.on("poll_ended", () => {
-      setSubmitted(true);
+      setPoll(null);
+      setResults({});
+      setVoted(false);
     });
 
     return () => {
@@ -42,75 +36,45 @@ export default function Student() {
     };
   }, [socket]);
 
-  if (!storedName) {
-    return (
-      <div style={{ maxWidth: 900, margin: "40px auto", padding: "0 32px" }}>
-        <h3>Enter your name</h3>
-        <input
-          value={nameInput}
-          onChange={e => setNameInput(e.target.value)}
-        />
-        <button
-          onClick={() => {
-            sessionStorage.setItem("studentName", nameInput);
-            window.location.reload();
-          }}
-        >
-          Join
-        </button>
-      </div>
-    );
+  const vote = (optionId) => {
+    if (voted) return;
+
+    socket.emit("vote", optionId);
+    setVoted(true);
+  };
+
+  if (!poll) {
+    return <h3>Waiting for teacher to start poll…</h3>;
   }
 
-  const timeRemaining = usePollTimer(
-    currentPoll?.startedAt,
-    currentPoll?.duration
-  );
-
-  if (!currentPoll) {
-    return (
-      <div style={{ maxWidth: 900, margin: "40px auto", padding: "0 32px" }}>
-        <p>Wait for the teacher to ask questions...</p>
-      </div>
-    );
-  }
+  const totalVotes =
+    Object.values(results).reduce((a, b) => a + b, 0) || 1;
 
   return (
-    <div style={{ maxWidth: 900, margin: "40px auto", padding: "0 32px" }}>
-      <h3>{currentPoll.question}</h3>
-      <p>Time left: {timeRemaining}s</p>
+    <div>
+      <h2>{poll.question}</h2>
 
-      {!submitted &&
-        timeRemaining > 0 &&
-        currentPoll.options.map(opt => (
-          <button
-            key={opt.id}
-            onClick={() => {
-              socket.emit("submit_vote", {
-                pollId: currentPoll._id,
-                optionId: opt.id,
-                studentId
-              });
-              setSubmitted(true);
-            }}
-          >
-            {opt.text}
-          </button>
-        ))}
+      <ul>
+        {poll.options.map((opt) => {
+          const percent = Math.round(
+            ((results[opt.id] || 0) / totalVotes) * 100
+          );
 
-      <h4>Results</h4>
-      {currentPoll.options.map(opt => {
-        const total =
-          Object.values(liveStats).reduce((a, b) => a + b, 0) || 1;
-        const count = liveStats[opt.id] || 0;
-        const percent = Math.round((count / total) * 100);
+          return (
+            <li key={opt.id}>
+              <button
+                onClick={() => vote(opt.id)}
+                disabled={voted}
+              >
+                {opt.text}
+              </button>{" "}
+              — {percent}%
+            </li>
+          );
+        })}
+      </ul>
 
-        return (
-          <div key={opt.id}>
-            {opt.text} — {percent}%
-          </div>
-        );
-      })}
+      {voted && <p style={{ color: "green" }}>Vote submitted</p>}
     </div>
   );
 }
