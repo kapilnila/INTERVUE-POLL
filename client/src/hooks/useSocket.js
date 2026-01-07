@@ -5,7 +5,7 @@ export default function useSocket() {
   const [connection, setConnection] = useState(null);
 
   useEffect(() => {
-    const socketInstance = io("http://localhost:5000");
+    const socketInstance = io("https://intervue-backend.onrender.com");
 
     setConnection(socketInstance);
 
