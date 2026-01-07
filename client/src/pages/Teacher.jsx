@@ -43,7 +43,7 @@ export default function Teacher() {
 
   async function loadHistory() {
     try {
-      const response = await fetchio("https://intervue-backend.onrender.com");
+      const response = await fetchio("https://intervue-poll-hs57.onrender.com/api/poll/history");
       const historyFromServer = await response.json();
       setPastPolls(Array.isArray(historyFromServer) ? historyFromServer : []);
     } catch {

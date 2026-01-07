@@ -15,7 +15,7 @@ const app = express();
 /* 🔥 CORS — THIS FIXES YOUR ISSUE */
 app.use(cors({
   origin: ["http://localhost:5173",
-     "https://intervue-poll.vercel.app"
+     "https://intervue-poll-alpha.vercel.app"
   ],
   methods: ["GET", "POST"],
   credentials: true
@@ -28,7 +28,7 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: ["http://localhost:5173",
-       "https://intervue-poll.vercel.app"
+       "https://intervue-poll-alpha.vercel.app"
     ],
     methods: ["GET", "POST"]
   }
